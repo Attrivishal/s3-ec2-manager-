@@ -1,6 +1,6 @@
 """
 EC2 Manager - Standalone EC2 Management Tool
-Author: [Your Name]
+Author: [Vishal Attri]
 Description: Simple tool to manage AWS EC2 instances
 """
 
@@ -143,4 +143,5 @@ def main():
         input("\nPress Enter to continue...")
 
 if __name__ == "__main__":
+
     main()

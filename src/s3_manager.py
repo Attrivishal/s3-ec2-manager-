@@ -1,6 +1,6 @@
 """
 S3 Manager - Standalone S3 Management Tool
-Author: [Your Name]
+Author: [Vishal Attri]
 Description: Simple tool to manage AWS S3 buckets and files
 """
 
@@ -133,4 +133,5 @@ def main():
         input("\nPress Enter to continue...")
 
 if __name__ == "__main__":
+
     main()
