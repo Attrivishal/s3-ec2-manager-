@@ -321,12 +321,56 @@ def ec2_list_instances():
     except Exception as e:
         print_error(f"Failed to list instances: {str(e)}")
 
+def get_available_subnet():
+    """Automatically find available subnet"""
+    try:
+        ec2 = boto3.client('ec2', region_name='ap-south-1')
+        
+        # Find default VPC
+        vpcs = ec2.describe_vpcs(Filters=[
+            {'Name': 'is-default', 'Values': ['true']}
+        ])
+        
+        if not vpcs['Vpcs']:
+            print_error("No default VPC found!")
+            return None
+            
+        vpc_id = vpcs['Vpcs'][0]['VpcId']
+        
+        # Find subnets in this VPC
+        subnets = ec2.describe_subnets(Filters=[
+            {'Name': 'vpc-id', 'Values': [vpc_id]}
+        ])
+        
+        if not subnets['Subnets']:
+            # Create a subnet if none exist
+            print(f"{Colors.YELLOW}Creating new subnet...{Colors.END}")
+            new_subnet = ec2.create_subnet(
+                VpcId=vpc_id,
+                CidrBlock='172.31.0.0/20',
+                AvailabilityZone='ap-south-1a'
+            )
+            return new_subnet['Subnet']['SubnetId']
+        
+        # Return first available subnet
+        return subnets['Subnets'][0]['SubnetId']
+        
+    except Exception as e:
+        print_error(f"Failed to get subnet: {str(e)}")
+        return None
+
 def ec2_create_instance():
     """Create a new EC2 instance with options"""
     print(f"\n{Colors.CYAN}{Colors.BOLD}➕ CREATE NEW EC2 INSTANCE{Colors.END}")
     print(f"{Colors.CYAN}────────────────────────────────────────────{Colors.END}")
     
     ec2 = boto3.client('ec2', region_name='ap-south-1')
+    
+    # Auto-detect subnet
+    subnet_id = get_available_subnet()
+    if not subnet_id:
+        print_error("Cannot create instance without subnet")
+        return
     
     name = input(f"\n{Colors.YELLOW}📝 Enter instance name: {Colors.END}").strip()
     
@@ -346,6 +390,7 @@ def ec2_create_instance():
         instance_type = 't2.medium'
     
     print(f"\n{Colors.BLUE}Selected: {Colors.YELLOW}{instance_type}{Colors.END}")
+    print(f"{Colors.CYAN}📍 Auto-selected subnet: {subnet_id[:20]}...{Colors.END}")
     
     show_progress_bar(3, f"Launching {name}")
     
@@ -355,7 +400,8 @@ def ec2_create_instance():
             InstanceType=instance_type,
             MinCount=1,
             MaxCount=1,
-            KeyName='MyWebServer-Key',            # ⚠️ CHANGE TO YOUR KEY NAME
+            KeyName='MyWebServer-Key',
+            SubnetId=subnet_id,  # ← AUTO-SELECTED SUBNET
             TagSpecifications=[{
                 'ResourceType': 'instance',
                 'Tags': [{'Key': 'Name', 'Value': name}]
@@ -493,5 +539,4 @@ def main():
 
 # Start the program
 if __name__ == "__main__":
-
     main()
